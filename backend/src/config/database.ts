@@ -6,7 +6,9 @@ import { logger } from '../utils/logger.js';
 
 // Workaround for the Windows DNS resolver issue.
 // Must run before Mongoose starts connecting.
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+if (process.platform === 'win32') {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+}
 
 mongoose.set('strictQuery', true);
 
