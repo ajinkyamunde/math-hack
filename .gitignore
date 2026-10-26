@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+result-files/exports/*
+!result-files/exports/.gitkeep
+frontend/test-results/
+frontend/playwright-report/
+.DS_Store

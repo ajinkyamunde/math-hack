@@ -1,0 +1,31 @@
+{
+  "name": "mathhack",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MathHack: real-time mathematical MCQ competition platform",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend && tsc -p tsconfig.scripts.json",
+    "lint": "npm run lint -w backend && npm run lint -w frontend",
+    "test": "npm run test -w backend && npm run test -w frontend",
+    "test:e2e": "npm run test:e2e -w frontend",
+    "create-host": "tsx scripts/createHost.ts",
+    "validate-env": "tsx scripts/validateEnvironment.ts",
+    "seed:dev": "tsx database/seed/developmentSeed.ts",
+    "templates": "tsx scripts/generateTemplates.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}
