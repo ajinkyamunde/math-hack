@@ -512,7 +512,12 @@ export async function listCompetitions(role: 'host' | 'student', query: { page: 
 }
 
 export async function hostState(id: string) {
-  return hostCompetitionState(await loadCompetition(id), Date.now());
+  const competition = await loadCompetition(id);
+  const [participants, connected] = await Promise.all([
+    Participant.countDocuments({ competitionId: competition._id }),
+    broadcaster().connectedStudentIds(id),
+  ]);
+  return { ...hostCompetitionState(competition, Date.now()), participants, connectedParticipants: connected.length };
 }
 
 export async function studentState(id: string, studentId: string) {

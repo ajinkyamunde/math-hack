@@ -10,3 +10,6 @@ result-files/exports/*
 frontend/test-results/
 frontend/playwright-report/
 .DS_Store
+
+# local-only CA used for sandbox docker verification
+.verify-ca.crt

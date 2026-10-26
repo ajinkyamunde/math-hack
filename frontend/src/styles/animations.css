@@ -1,0 +1,36 @@
+/* Shared, subtle motion. Everything is disabled for users who prefer reduced motion. */
+@keyframes mh-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes mh-pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+}
+
+@keyframes mh-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-200px, -120px, 0); }
+}
+
+@keyframes mh-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mh-shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+.mh-animate-in { animation: mh-fade-up var(--transition-med) both; }
+.mh-pulse { animation: mh-pulse-ring 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
