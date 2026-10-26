@@ -7,7 +7,15 @@ export function allowedOrigins(): string[] {
 }
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
-  return !origin || allowedOrigins().includes(origin);
+  if (!origin) return true;
+  if (allowedOrigins().includes(origin)) return true;
+  try {
+    const hostname = new URL(origin).hostname;
+    if (hostname.endsWith('.vercel.app')) return true;
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 export function corsOptions(): CorsOptions {
