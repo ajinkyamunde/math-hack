@@ -1,6 +1,9 @@
 /** Validates the environment without starting the server: npm run validate-env */
+import dns from 'node:dns';
 import mongoose from 'mongoose';
 import { EnvironmentError, getEnv } from '../backend/src/config/environment.js';
+
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 async function main(): Promise<void> {
   try {
