@@ -21,9 +21,11 @@
     "seed:dev": "tsx database/seed/developmentSeed.ts",
     "templates": "tsx scripts/generateTemplates.ts"
   },
-  "devDependencies": {
-    "tsx": "^4.20.0",
+  "dependencies": {
     "typescript": "~5.9.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0"
   },
   "engines": {
     "node": ">=20.11"
