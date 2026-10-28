@@ -13,7 +13,7 @@ export function setCsrfToken(token: string | null): void {
 export const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/api`,
   withCredentials: true,
-  timeout: 20000,
+  timeout: 60000,
 });
 
 apiClient.interceptors.request.use((config) => {

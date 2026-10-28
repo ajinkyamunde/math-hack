@@ -22,8 +22,8 @@ export function corsOptions(): CorsOptions {
   return {
     origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'X-CSRF-Token', 'Accept', 'Authorization'],
     exposedHeaders: ['Content-Disposition'],
     maxAge: 600,
   };
