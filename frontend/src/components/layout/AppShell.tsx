@@ -57,7 +57,7 @@ export function AppShell() {
                 <span className="muted small" style={{ padding: '0 8px' }}>{user.name}</span>
                 <button type="button" className="btn btn--small" onClick={handleLogout}>Log out</button>
               </>
-            ) : (
+            ) : location.pathname === '/' ? null : (
               <>
                 <NavLink to="/login">Student login</NavLink>
                 <NavLink to="/register">Register</NavLink>
@@ -70,7 +70,9 @@ export function AppShell() {
       <main id="main" className="app-main" tabIndex={-1}>
         <Outlet />
       </main>
-      <footer className="footer">MathHack · A fan-inspired competition platform, not affiliated with Marvel or Disney.</footer>
+      {location.pathname === '/' ? null : (
+        <footer className="footer">MathHack · A fan-inspired competition platform, not affiliated with Marvel or Disney.</footer>
+      )}
     </div>
   );
 }

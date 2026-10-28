@@ -210,6 +210,157 @@ code { font-size: 0.9em; }
 .dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: grid; place-items: center; padding: var(--gutter); z-index: 50; }
 .dialog { max-width: 480px; width: 100%; }
 
+/* ---------- Landing Page & Marvel Background ---------- */
+html:has(.page-landing),
+body.page-landing {
+  overflow: hidden !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+}
+
+.page-landing .app-shell {
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+.page-landing .app-main {
+  padding: 0 !important;
+  height: calc(100dvh - 56px) !important;
+  max-height: calc(100dvh - 56px) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+}
+
+.page-landing .footer {
+  display: none !important;
+}
+
+.landing-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.landing-page-bg {
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    radial-gradient(ellipse at center, rgba(7, 5, 13, 0.18) 0%, rgba(7, 5, 13, 0.58) 70%, rgba(7, 5, 13, 0.82) 100%),
+    url('/mathhack_marvel_comics_theme.png');
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+/* Remove right upper navigation links on landing page */
+.page-landing .topbar__nav,
+.page-landing .topbar .topbar__menu-btn {
+  display: none !important;
+}
+.page-landing .topbar .brand > span {
+  display: none;
+}
+
+.landing-hero-minimal {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  width: 100%;
+  padding: 0 var(--space-4) clamp(20px, 4.5vh, 44px);
+  text-align: center;
+}
+
+.landing-tagline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.05rem, 2.6vw, 1.65rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 var(--space-4);
+  background: linear-gradient(135deg, #ffffff 15%, var(--color-gold) 60%, var(--color-infinity-strong) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 16px rgba(245, 196, 81, 0.35));
+}
+
+.landing-actions-minimal {
+  display: flex; flex-wrap: wrap; gap: var(--space-4);
+  justify-content: center; align-items: center;
+  width: 100%; max-width: 680px;
+}
+
+.btn--minimal {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  padding: 0 var(--space-5);
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+/* ---------- Full Avengers Superhero Button Palette ---------- */
+
+/* Iron Man Crimson Red & Gold (Register) */
+.btn--avengers-red {
+  background: linear-gradient(135deg, #ed1d24 0%, #b91c1c 50%, #7f1d1d 100%) !important;
+  color: #ffffff !important;
+  border: 2px solid #f5c451 !important;
+  box-shadow: 0 0 18px rgba(237, 29, 36, 0.5), 0 6px 20px rgba(0, 0, 0, 0.8) !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+.btn--avengers-red:hover:not(:disabled) {
+  border-color: #fde68a !important;
+  box-shadow: 0 0 30px rgba(245, 196, 81, 0.7), 0 0 24px rgba(237, 29, 36, 0.65) !important;
+  transform: translateY(-2px) scale(1.03);
+}
+
+/* Captain America Shield Blue & Cyan (Student Login) */
+.btn--avengers-blue {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #172554 100%) !important;
+  color: #ffffff !important;
+  border: 2px solid #38bdf8 !important;
+  box-shadow: 0 0 18px rgba(37, 99, 235, 0.5), 0 6px 20px rgba(0, 0, 0, 0.8) !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+.btn--avengers-blue:hover:not(:disabled) {
+  border-color: #bae6fd !important;
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.7), 0 0 24px rgba(37, 99, 235, 0.65) !important;
+  transform: translateY(-2px) scale(1.03);
+}
+
+/* Thor Lightning Gold & Amber (Host Login) */
+.btn--avengers-gold {
+  background: linear-gradient(135deg, #f5c451 0%, #d97706 50%, #92400e 100%) !important;
+  color: #0b0814 !important;
+  border: 2px solid #fde68a !important;
+  box-shadow: 0 0 18px rgba(245, 196, 81, 0.5), 0 6px 20px rgba(0, 0, 0, 0.8) !important;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+.btn--avengers-gold:hover:not(:disabled) {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 32px rgba(245, 196, 81, 0.85), 0 0 22px rgba(217, 119, 6, 0.7) !important;
+  transform: translateY(-2px) scale(1.03);
+}
+
+@media (max-width: 640px) {
+  .landing-actions-minimal {
+    gap: var(--space-3);
+  }
+  .landing-actions-minimal .btn--minimal {
+    width: 100%;
+    min-width: 240px;
+    min-height: 44px;
+  }
+}
+
 /* ---------- Hero ---------- */
 .hero { text-align: center; padding: clamp(32px, 8vw, 96px) 0 var(--space-6); }
 .hero__title { font-size: clamp(2.4rem, 9vw, 4.8rem); font-weight: 800; letter-spacing: 0.12em; margin-bottom: var(--space-3);
