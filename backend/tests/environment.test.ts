@@ -15,7 +15,13 @@ describe('environment validation', () => {
     const env = parseEnvironment(base);
     expect(env.PORT).toBe(4000);
     expect(env.COOKIE_SAME_SITE).toBe('lax');
-    expect(env.REQUIRE_EMAIL_VERIFICATION).toBe(false);
+  });
+
+  it('ignores leftover email verification settings from older deployments', () => {
+    const env = parseEnvironment({ ...base, REQUIRE_EMAIL_VERIFICATION: 'true', SMTP_HOST: 'smtp.example.com', SMTP_PASSWORD: 'secret' });
+    expect(env).not.toHaveProperty('REQUIRE_EMAIL_VERIFICATION');
+    expect(env).not.toHaveProperty('SMTP_HOST');
+    expect(env).not.toHaveProperty('SMTP_PASSWORD');
   });
 
   it('rejects missing or weak settings without echoing secret values', () => {
@@ -31,9 +37,17 @@ describe('environment validation', () => {
     }
   });
 
+  it('parses CORS_EXTRA_ORIGINS into exact origins and rejects junk', () => {
+    expect(parseEnvironment(base).CORS_EXTRA_ORIGINS).toEqual([]);
+    expect(parseEnvironment({ ...base, CORS_EXTRA_ORIGINS: ' https://preview-1.vercel.app/ , https://b.example.com/path ' }).CORS_EXTRA_ORIGINS).toEqual([
+      'https://preview-1.vercel.app',
+      'https://b.example.com',
+    ]);
+    expect(() => parseEnvironment({ ...base, CORS_EXTRA_ORIGINS: 'not a url' })).toThrow(/CORS_EXTRA_ORIGINS/);
+  });
+
   it('refuses unsafe production combinations', () => {
     expect(() => parseEnvironment({ ...base, RATE_LIMIT_DISABLED: 'true' })).toThrow(/Rate limiting/);
-    expect(() => parseEnvironment({ ...base, REQUIRE_EMAIL_VERIFICATION: 'true' })).toThrow(/SMTP_HOST/);
     expect(() => parseEnvironment({ ...base, COOKIE_SAME_SITE: 'none', BACKEND_PUBLIC_URL: 'http://api.example' })).toThrow(/https/);
   });
 });

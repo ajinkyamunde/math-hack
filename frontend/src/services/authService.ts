@@ -34,8 +34,6 @@ export const authService = {
     await call(apiClient.post('/auth/logout'));
     setCsrfToken(null);
   },
-  verifyEmail: (token: string) => call(apiClient.post<{ verified: boolean }>('/auth/verify-email', { token })),
-  resendVerification: () => call(apiClient.post('/auth/resend-verification')),
 };
 
 export { call };

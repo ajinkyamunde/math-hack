@@ -1,5 +1,4 @@
 import type { Request, Response } from 'express';
-import { emailVerificationAvailable, getEnv } from '../config/environment.js';
 import { Host } from '../models/Host.js';
 import { Student } from '../models/Student.js';
 import * as authService from '../services/authService.js';
@@ -15,16 +14,11 @@ function startSession(res: Response, user: AuthUser): string {
   return csrfToken;
 }
 
-function verificationInfo() {
-  const env = getEnv();
-  return { emailVerificationAvailable: emailVerificationAvailable(), emailVerificationRequired: env.REQUIRE_EMAIL_VERIFICATION };
-}
-
 export async function register(req: Request, res: Response): Promise<void> {
   const input = req.body as z.output<typeof registerSchema>;
   const student = await authService.registerStudent(input);
   const csrfToken = startSession(res, { id: student.id, role: 'student' });
-  res.status(201).json({ user: { ...student.toJSON(), role: 'student' }, csrfToken, ...verificationInfo() });
+  res.status(201).json({ user: { ...student.toJSON(), role: 'student' }, csrfToken });
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
@@ -38,7 +32,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   }
   const student = await authService.loginStudent(input.identifier, input.password);
   const csrfToken = startSession(res, { id: student.id, role: 'student' });
-  res.json({ user: { ...student.toJSON(), role: 'student' }, csrfToken, ...verificationInfo() });
+  res.json({ user: { ...student.toJSON(), role: 'student' }, csrfToken });
 }
 
 export function logout(_req: Request, res: Response): void {
@@ -56,17 +50,5 @@ export async function me(req: Request, res: Response): Promise<void> {
   res.json({
     user: { ...account.toJSON(), role: auth.role },
     csrfToken: authService.csrfTokenFor(auth.sessionId),
-    ...(auth.role === 'student' ? verificationInfo() : {}),
   });
-}
-
-export async function verifyEmail(req: Request, res: Response): Promise<void> {
-  await authService.verifyEmailToken((req.body as { token: string }).token);
-  res.json({ verified: true });
-}
-
-export async function resendVerification(req: Request, res: Response): Promise<void> {
-  if (!req.auth) throw unauthenticated();
-  await authService.resendVerification(req.auth.id);
-  res.status(202).json({ sent: true });
 }

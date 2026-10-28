@@ -29,13 +29,13 @@ The compose file runs MongoDB (single-node replica set), the backend and nginx s
 | `PORT` | provided by platform |
 | `MONGODB_URI` | `mongodb+srv://…/mathhack` |
 | `FRONTEND_URL` | `https://mathhack.college.edu` |
+| `CORS_EXTRA_ORIGINS` | optional, comma-separated exact extra origins (e.g. a Vercel preview URL); no wildcards |
 | `BACKEND_PUBLIC_URL` | `https://api.mathhack.college.edu` |
 | `SESSION_SECRET` | 48 random bytes |
 | `COOKIE_SAME_SITE` | `lax` (same site) or `none` (cross-site, HTTPS only) |
 | `COOKIE_DOMAIN` | usually empty |
 | `TRUST_PROXY` | `1` behind the platform's proxy |
 | `REDIS_URL` | only when running 2+ instances |
-| `SMTP_*`, `REQUIRE_EMAIL_VERIFICATION` | optional email verification |
 | `ROSTER_ENFORCED` | optional |
 
 * Health check path: `/api/health`.

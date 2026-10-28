@@ -19,12 +19,31 @@ const booleanString = z
   .default('false')
   .transform((value) => value === 'true');
 
+// Email verification has been removed. Leftover SMTP_* or REQUIRE_EMAIL_VERIFICATION variables in an existing
+// deployment are unknown keys here, so zod drops them and startup is unaffected.
 const environmentSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().min(1).max(65535).default(4000),
     MONGODB_URI: z.string().regex(/^mongodb(\+srv)?:\/\//, 'MONGODB_URI must be a mongodb:// or mongodb+srv:// URI'),
     FRONTEND_URL: z.string().url(),
+    /** Optional comma-separated list of extra exact frontend origins, e.g. a Vercel preview deployment. */
+    CORS_EXTRA_ORIGINS: z
+      .string()
+      .optional()
+      .transform((value, ctx) => {
+        const origins: string[] = [];
+        for (const entry of (value ?? '').split(',').map((part) => part.trim()).filter(Boolean)) {
+          try {
+            const url = new URL(entry);
+            if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('protocol');
+            origins.push(url.origin);
+          } catch {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'CORS_EXTRA_ORIGINS must be a comma-separated list of http(s) URLs' });
+          }
+        }
+        return origins;
+      }),
     BACKEND_PUBLIC_URL: z.string().url(),
     SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
     SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(12),
@@ -32,12 +51,6 @@ const environmentSchema = z
     COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
     TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
     REDIS_URL: z.string().optional().transform((value) => value || undefined),
-    SMTP_HOST: z.string().optional().transform((value) => value || undefined),
-    SMTP_PORT: z.coerce.number().int().optional(),
-    SMTP_USER: z.string().optional(),
-    SMTP_PASSWORD: z.string().optional(),
-    SMTP_FROM: z.string().optional(),
-    REQUIRE_EMAIL_VERIFICATION: booleanString,
     ROSTER_ENFORCED: booleanString,
     ALLOWED_EMAIL_DOMAINS: z
       .string()
@@ -51,13 +64,6 @@ const environmentSchema = z
     RATE_LIMIT_DISABLED: booleanString,
   })
   .superRefine((env, ctx) => {
-    if (env.REQUIRE_EMAIL_VERIFICATION && !env.SMTP_HOST) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['REQUIRE_EMAIL_VERIFICATION'],
-        message: 'REQUIRE_EMAIL_VERIFICATION=true needs SMTP_HOST, SMTP_PORT and SMTP_FROM to be configured',
-      });
-    }
     if (env.COOKIE_SAME_SITE === 'none' && !env.BACKEND_PUBLIC_URL.startsWith('https://')) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['COOKIE_SAME_SITE'], message: 'COOKIE_SAME_SITE=none requires an https BACKEND_PUBLIC_URL' });
     }
@@ -94,4 +100,3 @@ export function getEnv(): Environment {
 }
 
 export const isProduction = (): boolean => getEnv().NODE_ENV === 'production';
-export const emailVerificationAvailable = (): boolean => Boolean(getEnv().SMTP_HOST && getEnv().SMTP_FROM);

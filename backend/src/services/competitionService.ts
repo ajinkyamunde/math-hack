@@ -2,9 +2,7 @@ import { Types, type UpdateQuery } from 'mongoose';
 import { Competition, type CompetitionAttrs, type CompetitionLean, type QueueItem } from '../models/Competition.js';
 import { Participant } from '../models/Participant.js';
 import { Question } from '../models/Question.js';
-import { Student } from '../models/Student.js';
 import { Attempt } from '../models/Attempt.js';
-import { getEnv } from '../config/environment.js';
 import { AppError, badRequest, forbidden, invalidState, notFound, isDuplicateKeyError } from '../utils/errors.js';
 import type { z } from 'zod';
 import type { createCompetitionSchema, updateCompetitionSchema } from '../validation/competitionSchemas.js';
@@ -539,10 +537,6 @@ export async function joinCompetition(id: string, studentId: string) {
   const competition = await loadCompetition(id);
   if (!['WAITING', 'RUNNING', 'PAUSED'].includes(competition.status)) {
     throw invalidState(competition.status === 'DRAFT' ? 'This competition is not open yet.' : 'This competition is no longer accepting participants.');
-  }
-  if (getEnv().REQUIRE_EMAIL_VERIFICATION) {
-    const student = await Student.findById(studentId).select('emailVerified').lean();
-    if (!student?.emailVerified) throw forbidden('Verify your college email before joining a competition.');
   }
   try {
     await Participant.create({ competitionId: competition._id, studentId });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Alert, ErrorAlert } from '../components/common/Alert';
+import { ErrorAlert } from '../components/common/Alert';
 import { StatusBadge } from '../components/common/Badges';
 import { EmptyState } from '../components/common/EmptyState';
 import { Loading } from '../components/common/Loading';
@@ -9,43 +9,11 @@ import { Panel } from '../components/common/Panel';
 import { PageHeader } from '../components/layout/PageHeader';
 import { useAuth } from '../features/authentication/useAuth';
 import { useAsync } from '../hooks/useAsync';
-import { authService } from '../services/authService';
 import { competitionService } from '../services/competitionService';
 import { resultService } from '../services/resultService';
 import { toApiError } from '../services/apiClient';
 import type { CompetitionSummary, StudentUser } from '../types';
 import { formatDateTime, formatDuration } from '../utils/format';
-
-function VerificationNotice({ student }: { student: StudentUser }) {
-  const { verification } = useAuth();
-  const [message, setMessage] = useState<string | null>(null);
-  if (student.emailVerified) return null;
-  if (!verification.available) {
-    return (
-      <Alert tone="warning" title="Email not verified">
-        Email verification is not configured on this server, so your college email has not been confirmed. The organizers can see this status.
-      </Alert>
-    );
-  }
-  return (
-    <Alert tone="warning" title="Verify your college email">
-      We sent a verification link to {student.email}.{verification.required && ' You must verify before joining a competition.'}{' '}
-      <button
-        type="button"
-        className="btn btn--small"
-        onClick={() =>
-          authService
-            .resendVerification()
-            .then(() => setMessage('A new link is on its way.'))
-            .catch((err) => setMessage(toApiError(err).message))
-        }
-      >
-        Resend link
-      </button>
-      {message && <span className="small"> {message}</span>}
-    </Alert>
-  );
-}
 
 function CompetitionRow({ competition, onJoined }: { competition: CompetitionSummary; onJoined: () => void }) {
   const [joining, setJoining] = useState(false);
@@ -100,7 +68,6 @@ export function StudentDashboardPage() {
   return (
     <div className="stack">
       <PageHeader eyebrow="Student dashboard" title={`Welcome, ${student.name.split(' ')[0]}`} description="Join a competition, then keep this page open on your phone while the host runs it." />
-      <VerificationNotice student={student} />
       <div className="grid grid--2">
         <Panel title="Competitions" actions={<button type="button" className="btn btn--small" onClick={() => void competitions.reload()}>Refresh</button>}>
           {competitions.loading && !competitions.data ? (
@@ -122,7 +89,7 @@ export function StudentDashboardPage() {
             {[
               ['Name', student.name],
               ['PRN', student.prn],
-              ['Email', `${student.email} ${student.emailVerified ? '(verified)' : '(unverified)'}`],
+              ['Email', student.email],
               ['Department', student.department],
               ['Academic year', student.academicYear],
             ].map(([label, value]) => (

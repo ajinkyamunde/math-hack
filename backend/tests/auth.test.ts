@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { Student } from '../src/models/Student.js';
-import { HOST, ORIGIN, loginHost, registerStudent, studentPayload, useTestDatabase } from './helpers.js';
+import { HOST, ORIGIN, createOpenCompetition, createQuestions, loginHost, registerStudent, studentPayload, useTestDatabase } from './helpers.js';
 import { createHostAccount } from '../src/services/authService.js';
 import { Host } from '../src/models/Host.js';
 
@@ -16,9 +16,12 @@ describe('student registration', () => {
     expect(res.body.user.passwordHash).toBeUndefined();
     expect(res.body.user.role).toBe('student');
     expect(res.headers['set-cookie']?.[0]).toMatch(/mh_session=.*HttpOnly/i);
-    const stored = await Student.findOne({ prn: 'ABC123456' }).select('+passwordHash').lean();
+    const stored = await Student.findOne({ prn: 'ABC123456' }).select('+passwordHash +emailVerificationTokenHash').lean();
     expect(stored?.passwordHash).toMatch(/^\$argon2id\$/);
-    expect(stored?.emailVerified).toBe(false);
+    expect(stored?.emailVerificationTokenHash).toBeUndefined();
+    // No verification step: the response carries no verification flags and the student can use the account at once.
+    expect(res.body).not.toHaveProperty('emailVerificationAvailable');
+    expect(res.body).not.toHaveProperty('emailVerificationRequired');
   });
 
   it('rejects a duplicate PRN', async () => {
@@ -48,6 +51,37 @@ describe('student registration', () => {
     const res = await request(getApp()).post('/api/auth/register').set('Origin', ORIGIN).send({ ...studentPayload(), role: 'host' });
     expect(res.status).toBe(201);
     expect(res.body.user.role).toBe('student');
+  });
+});
+
+describe('no email verification', () => {
+  it('lets a freshly registered student log in and join a competition without verifying', async () => {
+    const host = await loginHost(getApp());
+    const [q] = await createQuestions(host, [{}]);
+    const id = await createOpenCompetition(host, [q!]);
+    const payload = studentPayload({ prn: 'NOVERIFY01', email: 'noverify@college.test' });
+    await request(getApp()).post('/api/auth/register').set('Origin', ORIGIN).send(payload).expect(201);
+
+    const agent = request.agent(getApp());
+    const login = await agent.post('/api/auth/login').set('Origin', ORIGIN).send({ role: 'student', identifier: payload.email, password: payload.password });
+    expect(login.status).toBe(200);
+    const join = await agent.post(`/api/competitions/${id}/join`).set('Origin', ORIGIN).set('X-CSRF-Token', login.body.csrfToken);
+    expect(join.status).toBe(200);
+    expect(join.body.competition.joined).toBe(true);
+  });
+
+  it('lets existing unverified accounts keep working', async () => {
+    const student = await registerStudent(getApp(), { prn: 'LEGACY0001', email: 'legacy@college.test' });
+    await Student.updateOne({ prn: 'LEGACY0001' }, { $set: { emailVerified: false, emailVerificationTokenHash: 'x'.repeat(64) } });
+    const me = await student.get('/api/auth/me');
+    expect(me.status).toBe(200);
+    expect(me.body.user).not.toHaveProperty('emailVerificationTokenHash');
+  });
+
+  it('no longer exposes the verification endpoints', async () => {
+    const student = await registerStudent(getApp());
+    expect((await request(getApp()).post('/api/auth/verify-email').set('Origin', ORIGIN).send({ token: 'a'.repeat(43) })).status).toBe(404);
+    expect((await student.post('/api/auth/resend-verification')).status).toBe(404);
   });
 });
 

@@ -75,12 +75,12 @@ All variables are documented in [.env.example](.env.example). The essentials are
 | `MONGODB_URI` | MongoDB connection string. It must point at a replica set. |
 | `SESSION_SECRET` | At least 32 random characters. Generate one with `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`. |
 | `FRONTEND_URL` | The exact browser origin of the app. It is used for CORS, CSRF and Socket.IO. |
-| `BACKEND_PUBLIC_URL` | The public URL of the API. It is used in email verification links. |
+| `CORS_EXTRA_ORIGINS` | Optional. Comma-separated extra exact origins (e.g. a Vercel preview URL). Wildcards are not supported. |
+| `BACKEND_PUBLIC_URL` | The public URL of the API (must be https when `COOKIE_SAME_SITE=none`). |
 | `VITE_API_URL` | The API URL baked into the frontend build. Leave it empty in development so Vite proxies `/api` and `/socket.io` to the backend. |
 | `COOKIE_SAME_SITE`, `COOKIE_DOMAIN`, `TRUST_PROXY` | Settings for deploying behind proxies and across subdomains. |
 | `HOST_INITIAL_*` | Read only by `npm run create-host`. Remove them afterwards. |
 | `REDIS_URL` | Optional. Enables the Socket.IO Redis adapter for multiple backend instances. |
-| `SMTP_*`, `REQUIRE_EMAIL_VERIFICATION` | Optional. Email verification for students. |
 | `ROSTER_ENFORCED` | Optional. Only PRN and email pairs on an uploaded roster can register. |
 
 Never commit `.env`. It is git-ignored.

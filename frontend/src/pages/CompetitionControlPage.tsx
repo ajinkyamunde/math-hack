@@ -83,6 +83,7 @@ export function CompetitionControlPage() {
         actions={
           <>
             <StatusBadge status={state.status} />
+            {state.status !== 'DRAFT' && <Link className="btn" to={`/host/competitions/${state.id}/participants`}>Participants</Link>}
             {finished && <Link className="btn btn--gold" to={`/host/competitions/${state.id}/results`}>View results</Link>}
           </>
         }

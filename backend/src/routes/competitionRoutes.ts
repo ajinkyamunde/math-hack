@@ -1,10 +1,15 @@
 import { Router } from 'express';
 import * as competitions from '../controllers/competitionController.js';
+import * as participantAccounts from '../controllers/participantAccountController.js';
+import * as participants from '../controllers/participantController.js';
 import * as results from '../controllers/resultController.js';
 import { authenticate, requireStudent } from '../middleware/authenticate.js';
 import { authorizeHost } from '../middleware/authorizeHost.js';
+import { authorizeCompetitionOwner } from '../middleware/authorizeCompetitionOwner.js';
+import { participantAdminLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { idParams, objectId } from '../validation/common.js';
+import { participantParams, participantQuerySchema, resetParticipantPasswordSchema } from '../validation/participantSchemas.js';
 import {
   competitionListQuerySchema,
   createCompetitionSchema,
@@ -40,17 +45,33 @@ export function competitionRoutes(): Router {
   router.post('/:id/end', ...hostCommand, competitions.end);
   router.post('/:id/cancel', ...hostCommand, competitions.cancel);
 
-  router.get('/:id/leaderboard', params, results.leaderboard);
-  router.get('/:id/results', params, results.results);
-  router.get('/:id/analytics', authorizeHost, params, results.analytics);
-  router.get('/:id/export.xlsx', authorizeHost, params, results.exportXlsx);
-  router.get('/:id/export.csv', authorizeHost, params, results.exportCsv);
+  // Participant data. Hosts must have created the competition; students keep their existing own-data-only views.
+  const owner = authorizeCompetitionOwner;
+  router.get('/:id/leaderboard', params, owner, results.leaderboard);
+  router.get('/:id/results', params, owner, results.results);
+  router.get('/:id/analytics', authorizeHost, params, owner, results.analytics);
+  router.get('/:id/export.xlsx', authorizeHost, params, owner, results.exportXlsx);
+  router.get('/:id/export.csv', authorizeHost, params, owner, results.exportCsv);
   router.get('/:id/my-report.csv', requireStudent, params, results.studentReport);
   router.get(
     '/:id/students/:studentId/report.csv',
     authorizeHost,
     validateRequest({ params: z.object({ id: objectId, studentId: objectId }) }),
+    owner,
     results.studentReport,
+  );
+
+  // Host participant dashboard and its Excel export.
+  const participantQuery = validateRequest({ params: idParams, query: participantQuerySchema });
+  router.get('/:id/participants', authorizeHost, participantQuery, owner, participants.list);
+  router.get('/:id/participants/export.xlsx', authorizeHost, participantQuery, owner, participants.exportXlsx);
+  router.post(
+    '/:id/participants/:studentId/password',
+    authorizeHost,
+    participantAdminLimiter(),
+    validateRequest({ params: participantParams, body: resetParticipantPasswordSchema }),
+    owner,
+    participantAccounts.resetPassword,
   );
   return router;
 }

@@ -21,6 +21,8 @@ export type Role = 'student' | 'host';
 export interface AuthUser {
   id: string;
   role: Role;
+  /** Session issue time in seconds (JWT iat); used to reject sessions older than a password reset. */
+  issuedAt?: number;
 }
 
 /** Per-difficulty timing rules (section 10 of the specification). */

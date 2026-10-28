@@ -24,7 +24,6 @@ export interface StudentUser {
   email: string;
   department: string;
   academicYear: string;
-  emailVerified: boolean;
   rosterVerified?: boolean;
   createdAt: string;
 }
@@ -41,8 +40,6 @@ export type User = StudentUser | HostUser;
 export interface SessionResponse {
   user: User;
   csrfToken: string;
-  emailVerificationAvailable?: boolean;
-  emailVerificationRequired?: boolean;
 }
 
 export interface Question {
@@ -247,4 +244,66 @@ export interface HostOverview {
   activeQuestions: number;
   totalQuestions: number;
   activeCompetition: (HostCompetitionState & { participants: number; connectedParticipants: number; answersReceived: number }) | null;
+}
+
+/** Host participant dashboard. Statuses are derived on the server from the existing game state. */
+export type ParticipantStatus = 'REGISTERED' | 'JOINED' | 'PLAYING' | 'DISCONNECTED' | 'COMPLETED' | 'CANCELLED';
+export const PARTICIPANT_STATUSES: ParticipantStatus[] = ['REGISTERED', 'JOINED', 'PLAYING', 'DISCONNECTED', 'COMPLETED', 'CANCELLED'];
+
+export interface ParticipantRow {
+  studentId: string;
+  name: string;
+  email: string;
+  prn: string;
+  department: string;
+  academicYear: string;
+  status: ParticipantStatus;
+  online: boolean;
+  registeredAt: string | null;
+  joinedAt: string | null;
+  lastSeenAt: string | null;
+  rank: number | null;
+  totalPoints: number | null;
+  correct: number | null;
+  answered: number | null;
+  accuracy: number | null;
+  avgCorrectResponseMs: number | null;
+  completedAt: string | null;
+}
+
+export interface ParticipantView {
+  competition: {
+    id: string;
+    name: string;
+    status: CompetitionStatus;
+    durationSeconds: number;
+    questionCount: number;
+    startedAt: string | null;
+    endsAt: string | null;
+    completedAt: string | null;
+  };
+  rows: ParticipantRow[];
+  counts: Record<ParticipantStatus, number> & { total: number };
+  departments: string[];
+  generatedAt: string;
+}
+
+export interface ParticipantFilters {
+  search?: string;
+  status?: ParticipantStatus;
+  department?: string;
+  academicYear?: string;
+  includeRegistered?: boolean;
+}
+
+export interface AssignableCompetition {
+  id: string;
+  name: string;
+  status: CompetitionStatus;
+}
+
+export interface CreatedParticipant {
+  participant: StudentUser;
+  competition: { id: string; name: string } | null;
+  generatedPrn: boolean;
 }

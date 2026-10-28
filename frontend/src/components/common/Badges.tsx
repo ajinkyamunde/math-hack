@@ -1,4 +1,4 @@
-import type { CompetitionStatus, Difficulty, QuestionStatus } from '../../types';
+import type { CompetitionStatus, Difficulty, ParticipantStatus, QuestionStatus } from '../../types';
 import { titleCase } from '../../utils/format';
 
 export function DifficultyBadge({ difficulty }: { difficulty: Difficulty }) {
@@ -9,6 +9,15 @@ export function StatusBadge({ status }: { status: CompetitionStatus | QuestionSt
   return (
     <span className={`badge badge--status-${status.toLowerCase()}`}>
       {status === 'RUNNING' && <span className="dot" aria-hidden="true" />}
+      {titleCase(status)}
+    </span>
+  );
+}
+
+export function ParticipantStatusBadge({ status }: { status: ParticipantStatus }) {
+  return (
+    <span className={`badge badge--participant-${status.toLowerCase()}`}>
+      {status === 'PLAYING' && <span className="dot" aria-hidden="true" />}
       {titleCase(status)}
     </span>
   );

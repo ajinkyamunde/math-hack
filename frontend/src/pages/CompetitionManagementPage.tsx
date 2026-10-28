@@ -135,6 +135,7 @@ export function CompetitionManagementPage() {
                       <td>
                         <div className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
                           <Link className="btn btn--small" to={`/host/competitions/${c.id}`}>{['RUNNING', 'PAUSED'].includes(c.status) ? 'Live control' : 'Manage'}</Link>
+                          {c.status !== 'DRAFT' && <Link className="btn btn--small" to={`/host/competitions/${c.id}/participants`}>Participants</Link>}
                           {c.status === 'COMPLETED' && <Link className="btn btn--small" to={`/host/competitions/${c.id}/results`}>Results</Link>}
                         </div>
                       </td>

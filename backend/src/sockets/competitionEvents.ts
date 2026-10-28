@@ -1,6 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 import { z, type ZodTypeAny } from 'zod';
 import { Participant } from '../models/Participant.js';
+import { assertCompetitionOwner } from '../services/competitionAccess.js';
 import * as competitions from '../services/competitionService.js';
 import { submitAnswer } from '../services/scoringService.js';
 import { AppError } from '../utils/errors.js';
@@ -60,6 +61,8 @@ export function registerCompetitionEvents(io: Server, socket: Socket): void {
 
   on('competition:join', competitionRef, 'any', async ({ competitionId }) => {
     if (user.role === 'host') {
+      // The host room streams the full leaderboard (names, PRNs), so only the owning host may join it.
+      await assertCompetitionOwner(competitionId, user.id);
       const state = await competitions.hostState(competitionId);
       await socket.join(rooms.hosts(competitionId));
       data.joined.add(competitionId);

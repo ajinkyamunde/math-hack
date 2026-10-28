@@ -11,7 +11,6 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { StudentDashboardPage } from '../pages/StudentDashboardPage';
 import { StudentLoginPage } from '../pages/StudentLoginPage';
 import { StudentRegisterPage } from '../pages/StudentRegisterPage';
-import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 
 // Host screens (and the charting library) load on demand so students' phones download less.
 const named = <K extends string>(loader: () => Promise<Record<K, React.ComponentType>>, key: K) => lazy(() => loader().then((m) => ({ default: m[key] })));
@@ -22,6 +21,7 @@ const ImportQuestionsPage = named(() => import('../pages/ImportQuestionsPage'), 
 const CompetitionManagementPage = named(() => import('../pages/CompetitionManagementPage'), 'CompetitionManagementPage');
 const CompetitionControlPage = named(() => import('../pages/CompetitionControlPage'), 'CompetitionControlPage');
 const ResultsPage = named(() => import('../pages/ResultsPage'), 'ResultsPage');
+const ParticipantsPage = named(() => import('../pages/ParticipantsPage'), 'ParticipantsPage');
 
 const student = (element: ReactNode) => <RequireRole role="student">{element}</RequireRole>;
 const host = (element: ReactNode) => (
@@ -37,7 +37,6 @@ export const router = createBrowserRouter([
       { path: '/', element: <LandingPage /> },
       { path: '/register', element: <StudentRegisterPage /> },
       { path: '/login', element: <StudentLoginPage /> },
-      { path: '/verify-email', element: <VerifyEmailPage /> },
       { path: '/student', element: student(<StudentDashboardPage />) },
       { path: '/student/competitions/:id', element: student(<CompetitionPage />) },
       { path: '/student/competitions/:id/leaderboard', element: student(<LeaderboardPage />) },
@@ -50,6 +49,7 @@ export const router = createBrowserRouter([
       { path: '/host/competitions', element: host(<CompetitionManagementPage />) },
       { path: '/host/competitions/:id', element: host(<CompetitionControlPage />) },
       { path: '/host/competitions/:id/results', element: host(<ResultsPage />) },
+      { path: '/host/competitions/:id/participants', element: host(<ParticipantsPage />) },
       { path: '/dashboard', element: <Navigate to="/student" replace /> },
       { path: '*', element: <NotFoundPage /> },
     ],

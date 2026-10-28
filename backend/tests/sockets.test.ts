@@ -210,3 +210,61 @@ describe('real-time competition flow', () => {
     expect(closed.reason).toBe('TIMER');
   });
 });
+
+describe('host participant dashboard with live sockets', () => {
+  const participants = (s: Session, id: string) =>
+    request(base).get(`/api/competitions/${id}/participants`).set('Origin', ORIGIN).set('Cookie', s.cookie);
+
+  const statusOf = (res: request.Response, studentId: string) =>
+    (res.body.rows as { studentId: string; status: string; online: boolean }[]).find((row) => row.studentId === studentId);
+
+  it('reports joined, playing and disconnected students from real socket presence', async () => {
+    const host = await hostSession();
+    const { id, students } = await setupCompetition(host, 2);
+    const [s1, s2] = students as [Session, Session];
+
+    let res = await participants(host, id);
+    expect(res.status).toBe(200);
+    expect(statusOf(res, s1.id)).toMatchObject({ status: 'JOINED', online: false });
+
+    const sock1 = socketFor(s1);
+    const sock2 = socketFor(s2);
+    await Promise.all([sock1, sock2].map(connected));
+    expect((await emit(sock1, 'competition:join', { competitionId: id })).ok).toBe(true);
+    expect((await emit(sock2, 'competition:join', { competitionId: id })).ok).toBe(true);
+    await host.post(`/api/competitions/${id}/start`);
+
+    res = await participants(host, id);
+    expect(statusOf(res, s1.id)).toMatchObject({ status: 'PLAYING', online: true });
+    expect(statusOf(res, s2.id)).toMatchObject({ status: 'PLAYING', online: true });
+
+    sock2.disconnect();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    res = await participants(host, id);
+    expect(statusOf(res, s1.id)?.status).toBe('PLAYING');
+    expect(statusOf(res, s2.id)).toMatchObject({ status: 'DISCONNECTED', online: false });
+    expect(res.body.counts).toMatchObject({ PLAYING: 1, DISCONNECTED: 1, total: 2 });
+
+    await host.post(`/api/competitions/${id}/end`);
+    res = await participants(host, id);
+    expect(statusOf(res, s1.id)?.status).toBe('COMPLETED');
+    expect(res.body.rows.every((row: { completedAt: string | null }) => row.completedAt)).toBe(true);
+  });
+
+  it('keeps another host out of the host room, which streams participant data', async () => {
+    const host = await hostSession();
+    const { id } = await setupCompetition(host, 1);
+    await createHostAccount({ name: 'Other Host', email: 'other-host@mathhack.test', password: 'OtherPassw0rd!' });
+    const other = session(
+      await request(base).post('/api/auth/login').set('Origin', ORIGIN).send({ role: 'host', email: 'other-host@mathhack.test', password: 'OtherPassw0rd!' }),
+    );
+    const socket = socketFor(other);
+    await connected(socket);
+    const ack = await emit(socket, 'competition:join', { competitionId: id });
+    expect(ack).toMatchObject({ ok: false, error: { code: 'FORBIDDEN' } });
+
+    const owner = socketFor(host);
+    await connected(owner);
+    expect((await emit(owner, 'competition:join', { competitionId: id })).ok).toBe(true);
+  });
+});

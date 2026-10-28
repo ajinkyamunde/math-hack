@@ -274,3 +274,22 @@ code { font-size: 0.9em; }
 .chart-box { width: 100%; height: 280px; }
 
 .footer { text-align: center; color: var(--color-text-faint); font-size: 0.8rem; padding: var(--space-5) var(--gutter); position: relative; z-index: 1; }
+
+/* Host participant dashboard */
+.badge--participant-registered { color: var(--color-text-faint); }
+.badge--participant-joined { color: var(--color-electric); }
+.badge--participant-playing { color: var(--color-success); }
+.badge--participant-disconnected { color: var(--color-warning); }
+.badge--participant-completed { color: var(--color-gold); }
+.badge--participant-cancelled { color: var(--color-danger); }
+/* One line per cell: the table scrolls sideways on narrow screens instead of breaking emails mid-word. */
+.participant-table td { white-space: nowrap; }
+.participant-email { margin-top: 2px; }
+/* The participant stays in view while the table scrolls sideways, so the Reset password button is never beside the wrong name. */
+.participant-table th:nth-child(2), .participant-table td:nth-child(2) { position: sticky; left: 0; z-index: 1; background: var(--color-panel-solid); box-shadow: 6px 0 8px -6px rgba(0,0,0,0.6); }
+.participant-table thead th:nth-child(2) { z-index: 2; }
+@media (max-width: 600px) {
+  /* Leave room beside the pinned participant column for the row's actions. */
+  .participant-table td:nth-child(2) { max-width: 44vw; }
+  .participant-table td:nth-child(2) > div { overflow: hidden; text-overflow: ellipsis; }
+}

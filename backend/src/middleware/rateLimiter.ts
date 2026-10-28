@@ -31,4 +31,6 @@ export const authLimiter = (): RequestHandler =>
   });
 
 export const registrationLimiter = (): RequestHandler => limiter({ windowMs: 60 * 60_000, limit: 50 });
+/** Host account administration (adding participants, resetting passwords): enough for a busy check-in desk. */
+export const participantAdminLimiter = (): RequestHandler => limiter({ windowMs: 60_000, limit: 60 });
 export const uploadLimiter = (): RequestHandler => limiter({ windowMs: 60_000, limit: 20 });

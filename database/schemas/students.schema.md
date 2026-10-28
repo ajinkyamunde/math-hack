@@ -10,9 +10,9 @@ Model: `backend/src/models/Student.ts`
 | `department` | string ≤100 | required |
 | `academicYear` | enum `FE SE TE BE PG1 PG2` | required |
 | `passwordHash` | string | Argon2id. `select: false`, stripped by `toJSON`; never sent to clients. |
-| `emailVerified` | boolean | `false` until the emailed link is used. Stays `false` when SMTP is not configured (the UI says so). |
+| `emailVerified` | boolean | Legacy. Email verification is disabled; the field is kept so existing records are unchanged, and nothing reads it. |
 | `rosterVerified` | boolean | `true` when PRN + email match the uploaded official roster. |
-| `emailVerificationTokenHash` / `emailVerificationExpiresAt` | string / date | SHA-256 of the one-time token; hidden. |
+| `emailVerificationTokenHash` / `emailVerificationExpiresAt` | string / date | Legacy, no longer written. Old values may remain on existing records; always hidden from API responses. |
 | `accountStatus` | enum `ACTIVE SUSPENDED` | suspended accounts cannot sign in or use existing sessions. |
 | `createdAt` / `updatedAt` | date | Mongoose timestamps |
 

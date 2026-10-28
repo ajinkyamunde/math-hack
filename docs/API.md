@@ -20,12 +20,10 @@ Legend: 🌐 public · 🎓 student · 🛡 host · 🔑 any signed-in user.
 
 | Method | Path | Who | Body / notes |
 |---|---|---|---|
-| POST | `/auth/register` | 🌐 | `{ name, prn, email, department, academicYear (FE/SE/TE/BE/PG1/PG2), password, confirmPassword }` → 201 `{ user, csrfToken, emailVerificationAvailable, emailVerificationRequired }` and session cookie. 409 with `details.field` on duplicate PRN/email. Password ≥10 chars with upper, lower, digit. |
+| POST | `/auth/register` | 🌐 | `{ name, prn, email, department, academicYear (FE/SE/TE/BE/PG1/PG2), password, confirmPassword }` → 201 `{ user, csrfToken }` and session cookie. 409 with `details.field` on duplicate PRN/email. Password ≥10 chars with upper, lower, digit. |
 | POST | `/auth/login` | 🌐 | `{ role: "student", identifier (PRN or email), password }` or `{ role: "host", email, password }` → `{ user, csrfToken }`. Wrong credentials: 401 "Invalid credentials." Rate limited per IP + identifier. |
 | POST | `/auth/logout` | 🔑 | 204, clears the cookie |
 | GET | `/auth/me` | 🔑 | `{ user, csrfToken, … }` |
-| POST | `/auth/verify-email` | 🌐 | `{ token }` from the emailed link |
-| POST | `/auth/resend-verification` | 🎓 | 503 if SMTP is not configured |
 
 There is **no** host registration endpoint; use `npm run create-host`.
 
@@ -62,7 +60,7 @@ There is **no** host registration endpoint; use `npm run create-host`.
 | POST | `/competitions/:id/skip` | 🛡 | `{ questionId? }` close live question early, or remove a pending one |
 | POST | `/competitions/:id/end` | 🛡 | → COMPLETED, finalizes scores |
 | POST | `/competitions/:id/cancel` | 🛡 | → CANCELLED |
-| POST | `/competitions/:id/join` | 🎓 | idempotent; WAITING/RUNNING/PAUSED only; 403 if email verification is required and missing |
+| POST | `/competitions/:id/join` | 🎓 | idempotent; WAITING/RUNNING/PAUSED only |
 | POST | `/competitions/:id/answers` | 🎓 | `{ questionId, selectedOption }` → 201 `{ submission: { questionId, selectedOption, submittedAt, alreadySubmitted:false } }`, or 200 with the original and `alreadySubmitted:true` on repeats. 409 `DEADLINE_PASSED` / `INVALID_STATE`. Correctness is not returned. |
 
 Invalid lifecycle transitions return 409 `INVALID_STATE` with a readable reason (e.g. "Cannot resume: the competition has already ended.").
@@ -80,6 +78,18 @@ Invalid lifecycle transitions return 409 `INVALID_STATE` with a readable reason 
 | GET | `/competitions/:id/my-report.csv` | 🎓 | own report after completion |
 
 Missing averages are `null` in JSON and `N/A` in exports, never 0.
+
+## Participant management (host who created the competition only)
+
+Every route below requires a host session; per-competition routes also require that this host created the competition (403 otherwise). Responses never include passwords or hashes.
+
+| Method | Path | Who | Notes |
+|---|---|---|---|
+| GET | `/competitions/:id/participants?search&status&department&academicYear&includeRegistered` | 🛡 owner | `{ competition, rows[], counts, departments, generatedAt }`; statuses REGISTERED, JOINED, PLAYING, DISCONNECTED, COMPLETED, CANCELLED |
+| GET | `/competitions/:id/participants/export.xlsx?…same filters…&tz` | 🛡 owner | editable two-sheet workbook; `tz` (IANA zone) sets the time zone of the times written |
+| GET | `/host/assignable-competitions` | 🛡 | this host's competitions that can still take participants (DRAFT, WAITING, RUNNING, PAUSED) |
+| POST | `/host/participants` | 🛡 | `{ name, email, department, academicYear, password, prn?, competitionId? }` → 201 `{ participant, competition, generatedPrn }`. `password` must match `^[A-Za-z0-9]{4}$`. Blank PRN → a unique `MH…` placeholder. Uses the same duplicate rules as registration (409 with `details.field`). `ALLOWED_EMAIL_DOMAINS` is enforced when set. `competitionId` must be the host's own, not finished. 60/min/IP. |
+| POST | `/competitions/:id/participants/:studentId/password` | 🛡 owner | `{ password }` (4 letters/digits) → `{ reset: true }`. The student must be a participant of `:id`. The old password stops working, existing sessions are revoked and any sign-in lock is cleared. 60/min/IP. |
 
 ## Students and dashboard
 

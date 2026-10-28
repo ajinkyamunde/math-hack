@@ -11,12 +11,14 @@ import { useNow } from '../hooks/useNow';
 import { competitionService } from '../services/competitionService';
 import { formatClock } from '../utils/format';
 import { remainingUntil, syncServerClock } from '../utils/serverClock';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { AddParticipantForm } from '../features/participants/AddParticipantForm';
 
 export function HostDashboardPage() {
   const overview = useAsync(() => competitionService.overview(), []);
   const active = overview.data?.activeCompetition ?? null;
   const now = useNow(1000, active?.status === 'RUNNING');
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     if (active) syncServerClock(active.serverNow);
@@ -42,10 +44,12 @@ export function HostDashboardPage() {
         actions={
           <>
             <Link className="btn btn--primary" to="/host/questions/new">Add MCQ</Link>
+            <button type="button" className="btn" aria-expanded={adding} onClick={() => setAdding((open) => !open)}>Add participant</button>
             <Link className="btn" to="/host/competitions">Competitions</Link>
           </>
         }
       />
+      {adding && <AddParticipantForm defaultCompetitionId={active?.id ?? ''} onCreated={() => void reload()} onClose={() => setAdding(false)} />}
       <div className="grid grid--stats">
         <StatCard label="Registered students" value={data.registeredStudents} />
         <StatCard label="Active questions" value={data.activeQuestions} hint={`${data.totalQuestions} in bank`} />

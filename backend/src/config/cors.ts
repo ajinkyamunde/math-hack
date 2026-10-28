@@ -1,21 +1,19 @@
 import type { CorsOptions } from 'cors';
 import { getEnv } from './environment.js';
 
-/** Only the configured frontend origin may send credentialed requests. */
+/**
+ * Exact browser origins allowed to send credentialed requests: FRONTEND_URL plus any listed in
+ * CORS_EXTRA_ORIGINS (for example a Vercel preview URL). There is deliberately no wildcard: with a cross-site
+ * session cookie, any page on an allowed origin could act as a signed-in host and read participant data.
+ */
 export function allowedOrigins(): string[] {
-  return [new URL(getEnv().FRONTEND_URL).origin];
+  const env = getEnv();
+  return [...new Set([new URL(env.FRONTEND_URL).origin, ...env.CORS_EXTRA_ORIGINS])];
 }
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
-  if (allowedOrigins().includes(origin)) return true;
-  try {
-    const hostname = new URL(origin).hostname;
-    if (hostname.endsWith('.vercel.app')) return true;
-  } catch {
-    return false;
-  }
-  return false;
+  return allowedOrigins().includes(origin);
 }
 
 export function corsOptions(): CorsOptions {

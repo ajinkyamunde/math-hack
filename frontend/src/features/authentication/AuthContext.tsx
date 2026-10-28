@@ -6,7 +6,6 @@ import type { SessionResponse, User } from '../../types';
 export interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  verification: { available: boolean; required: boolean };
   loginStudent: (identifier: string, password: string) => Promise<User>;
   loginHost: (email: string, password: string) => Promise<User>;
   register: (input: RegisterInput) => Promise<User>;
@@ -20,13 +19,11 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [verification, setVerification] = useState({ available: false, required: false });
 
   const accept = useCallback((session: SessionResponse) => {
     // A new identity must not reuse a socket authenticated as someone else.
     disconnectSocket();
     setUser(session.user);
-    setVerification({ available: Boolean(session.emailVerificationAvailable), required: Boolean(session.emailVerificationRequired) });
     return session.user;
   }, []);
 
@@ -34,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const session = await authService.me();
       setUser(session.user);
-      setVerification({ available: Boolean(session.emailVerificationAvailable), required: Boolean(session.emailVerificationRequired) });
     } catch {
       setUser(null);
     } finally {
@@ -50,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
-      verification,
       refresh,
       loginStudent: async (identifier, password) => accept(await authService.loginStudent(identifier, password)),
       loginHost: async (email, password) => accept(await authService.loginHost(email, password)),
@@ -64,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
     }),
-    [user, loading, verification, refresh, accept],
+    [user, loading, refresh, accept],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
