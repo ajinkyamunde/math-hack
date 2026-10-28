@@ -18,6 +18,7 @@
     "test:e2e": "npm run test:e2e -w frontend",
     "create-host": "tsx scripts/createHost.ts",
     "reset-host-pass": "tsx scripts/resetHostPassword.ts",
+    "users": "tsx scripts/manageUsers.ts",
     "validate-env": "tsx scripts/validateEnvironment.ts",
     "seed:dev": "tsx database/seed/developmentSeed.ts",
     "templates": "tsx scripts/generateTemplates.ts"
