@@ -13,7 +13,14 @@ export function allowedOrigins(): string[] {
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
-  return allowedOrigins().includes(origin);
+  if (allowedOrigins().includes(origin)) return true;
+  try {
+    const hostname = new URL(origin).hostname;
+    if (hostname.endsWith('.vercel.app')) return true;
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 export function corsOptions(): CorsOptions {

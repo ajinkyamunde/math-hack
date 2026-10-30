@@ -1,7 +1,24 @@
 import axios, { AxiosError } from 'axios';
 
-/** Empty in development (Vite proxies /api), or the backend origin in production builds. */
-export const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+/**
+ * Empty in development (Vite proxies /api) and when running on Vercel/production reverse proxy.
+ * Keeping API requests on the same origin ensures iOS Safari/Chrome treats cookies as 1st-party
+ * and never blocks them under Intelligent Tracking Prevention (ITP).
+ */
+export const API_BASE_URL = (() => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    // On Vercel or any public deployed web origin, always route to same-origin /api reverse-proxy
+    if (host.endsWith('.vercel.app') || (!host.includes('localhost') && !host.includes('127.0.0.1'))) {
+      return '';
+    }
+  }
+  const envUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+  if (typeof window !== 'undefined' && envUrl.includes('onrender.com')) {
+    return '';
+  }
+  return envUrl;
+})();
 
 let csrfToken: string | null = null;
 
