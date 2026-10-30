@@ -15,7 +15,17 @@ export function LandingPage() {
   return (
     <div className="landing-page">
       <div className="landing-page-bg" aria-hidden="true" />
-      <div className="landing-hero-minimal mh-animate-in">
+      <div className="landing-hero-minimal">
+        {/* MATHHACK Split Entrance Animation */}
+        <div className="mathhack-split-container" role="banner" aria-label="MATHHACK">
+          <div className="split-block split-block--math">
+            <img src="/logo_math.png" alt="MATH" width="482" height="216" />
+          </div>
+          <div className="split-block split-block--hack">
+            <img src="/logo_hack.png" alt="HACK" width="479" height="217" />
+          </div>
+        </div>
+
         {/* Short Tagline */}
         <p className="landing-tagline">
           Think Fast. Solve Smart. Win Big.
