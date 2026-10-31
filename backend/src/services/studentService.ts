@@ -44,7 +44,7 @@ export async function studentHistory(studentId: string, query: { page: number; p
         joinedAt: row.joinedAt,
         completedAt: row.completedAt ?? row.competitionId!.completedAt ?? null,
         finalScore: row.finalScore ?? null,
-        finalRank: row.finalRank ?? null,
+        finalRank: null,
       })),
     total,
     page: query.page,

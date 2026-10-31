@@ -61,14 +61,33 @@ function baseState(competition: CompetitionLean, now: number) {
 export function studentCompetitionState(
   competition: CompetitionLean,
   now: number,
-  extras: { joined: boolean; mySubmission?: { questionId: string; selectedOption: string | null; submittedAt?: Date | null } | null },
+  extras: {
+    joined: boolean;
+    currentQuestion?: ReturnType<typeof publicQuestion> | null;
+    questionNumber?: number | null;
+    totalQuestions?: number;
+    mySubmission?: { questionId: string; selectedOption: string | null; submittedAt?: Date | null } | null;
+  },
 ) {
+  const base = baseState(competition, now);
   const live = liveItem(competition);
+  const currentQuestion =
+    extras.currentQuestion !== undefined
+      ? extras.currentQuestion
+      : live && extras.joined
+        ? { ...publicQuestion(live, now), remainingMs: remainingQuestionMs(competition, live, now) }
+        : null;
+
   return {
-    ...baseState(competition, now),
+    ...base,
+    questionNumber: extras.questionNumber !== undefined ? extras.questionNumber : base.questionNumber,
+    totalQuestions: extras.totalQuestions !== undefined ? extras.totalQuestions : base.totalQuestions,
+    settings: {
+      revealAnswers: false,
+      showLeaderboardToStudents: false,
+    },
     joined: extras.joined,
-    currentQuestion:
-      live && extras.joined ? { ...publicQuestion(live, now), remainingMs: remainingQuestionMs(competition, live, now) } : null,
+    currentQuestion,
     mySubmission: extras.mySubmission
       ? { questionId: extras.mySubmission.questionId, selectedOption: extras.mySubmission.selectedOption, submittedAt: extras.mySubmission.submittedAt?.toISOString() ?? null }
       : null,

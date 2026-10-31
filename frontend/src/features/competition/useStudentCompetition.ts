@@ -109,7 +109,8 @@ export function useStudentCompetition(competitionId: string | undefined) {
         const result = getSocket().connected
           ? await emitWithAck<{ questionId: string; selectedOption: OptionKey; submittedAt: string }>('question:submit', { competitionId, questionId, selectedOption: option })
           : await competitionService.submitAnswer(competitionId, questionId, option);
-        setState((previous) => (previous ? { ...previous, mySubmission: { questionId: result.questionId, selectedOption: result.selectedOption, submittedAt: result.submittedAt } } : previous));
+        void result;
+        await fetchState();
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : 'Your answer could not be submitted.');
         void fetchState();

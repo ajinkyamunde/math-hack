@@ -36,7 +36,7 @@ export function schedule(competition: { _id: unknown; status: string; endsAt?: D
   const id = String(competition._id);
   cancel(id);
   if (competition.status !== 'RUNNING') return;
-  const candidates = [competition.endsAt, competition.currentQuestionDeadline].filter((d): d is Date => d instanceof Date);
+  const candidates = [competition.endsAt].filter((d): d is Date => d instanceof Date);
   if (!candidates.length) return;
   const next = Math.min(...candidates.map((d) => d.getTime()));
   const delay = Math.max(0, Math.min(next - Date.now() + ALARM_SLACK_MS, 2_000_000_000));
@@ -56,7 +56,7 @@ export async function sweepDue(now = new Date()): Promise<void> {
   if (!handler) return;
   const due = await Competition.find({
     status: 'RUNNING',
-    $or: [{ endsAt: { $lte: now } }, { currentQuestionDeadline: { $lte: now } }],
+    endsAt: { $lte: now },
   })
     .select('_id')
     .lean();

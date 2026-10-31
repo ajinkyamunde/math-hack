@@ -102,19 +102,19 @@ export function csvExport(a: CompetitionAnalytics, type: CsvExportType): string 
   return toCsv(table.headers, table.rows);
 }
 
-export function studentReportCsv(a: CompetitionAnalytics, studentId: string): string {
+export function studentReportCsv(a: CompetitionAnalytics, studentId: string, hideRank = false): string {
   const student = a.students.find((s) => s.studentId === studentId);
   if (!student) throw notFound('Participant');
-  return toCsv(['Field', 'Value'], studentReportRows(a, student));
+  return toCsv(['Field', 'Value'], studentReportRows(a, student, hideRank));
 }
 
-function studentReportRows(a: CompetitionAnalytics, s: StudentResult): CellValue[][] {
+function studentReportRows(a: CompetitionAnalytics, s: StudentResult, hideRank = false): CellValue[][] {
   const rows: CellValue[][] = [
     ['Competition', a.competition.name],
     ['PRN', s.prn],
     ['Student Name', s.name],
     ['Department', s.department],
-    ['Final Rank', s.rank],
+    ...(hideRank ? [] : [['Final Rank', s.rank]]),
     ['Total Score', s.totalPoints],
     ['Questions Attempted', s.attempted],
     ['Correct Answers', s.correct],

@@ -14,6 +14,7 @@ import {
   competitionListQuerySchema,
   createCompetitionSchema,
   publishSchema,
+  setDirectQuestionsSchema,
   setQueueSchema,
   submitAnswerSchema,
   updateCompetitionSchema,
@@ -32,6 +33,7 @@ export function competitionRoutes(): Router {
   router.get('/:id/state', params, competitions.get);
   router.patch('/:id', authorizeHost, validateRequest({ params: idParams, body: updateCompetitionSchema }), competitions.update);
   router.put('/:id/queue', authorizeHost, validateRequest({ params: idParams, body: setQueueSchema }), competitions.setQueue);
+  router.put('/:id/questions', authorizeHost, validateRequest({ params: idParams, body: setDirectQuestionsSchema }), competitions.setDirectQuestions);
 
   router.post('/:id/join', requireStudent, params, competitions.join);
   router.post('/:id/answers', requireStudent, validateRequest({ params: idParams, body: submitAnswerSchema }), competitions.submit);

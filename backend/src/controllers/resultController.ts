@@ -23,17 +23,15 @@ export async function leaderboard(req: Request, res: Response): Promise<void> {
     res.json({ entries, total: entries.length });
     return;
   }
-  await assertParticipant(id(req), auth.id);
-  const mine = entries.find((entry) => entry.studentId === auth.id) ?? null;
-  const visible = (competition.settings?.showLeaderboardToStudents ?? true) || competition.status === 'COMPLETED';
+  // Participants must not see rankings, leaderboard, or other participants' scores
   res.json({
-    entries: visible ? publicLeaderboard(entries) : [],
-    total: entries.length,
-    me: mine ? { rank: mine.rank, totalPoints: mine.totalPoints, correct: mine.correct, answered: mine.answered, accuracy: mine.accuracy } : null,
+    entries: [],
+    total: 0,
+    me: null,
   });
 }
 
-/** Hosts see every participant; a student sees only their own row once the competition is over. */
+/** Hosts see every participant; a student sees only their own 4 metrics once the competition is over. */
 export async function results(req: Request, res: Response): Promise<void> {
   const auth = req.auth!;
   const analytics = await buildCompetitionAnalytics(id(req));
@@ -45,7 +43,16 @@ export async function results(req: Request, res: Response): Promise<void> {
   if (analytics.competition.status !== 'COMPLETED') throw invalidState('Results are available after the competition ends.');
   const me = analytics.students.find((student) => student.studentId === auth.id);
   if (!me) throw notFound('Your result');
-  res.json({ summary: summarize(analytics), me, leaderboard: publicLeaderboard(analytics.leaderboard, 10) });
+  // Requirement 1: Participants only see total attempted, correct, incorrect, and unanswered.
+  res.json({
+    summary: { name: analytics.competition.name },
+    me: {
+      attempted: me.attempted,
+      correct: me.correct,
+      incorrect: me.incorrect,
+      unanswered: me.unanswered,
+    },
+  });
 }
 
 export async function analytics(req: Request, res: Response): Promise<void> {
@@ -80,5 +87,5 @@ export async function studentReport(req: Request, res: Response): Promise<void> 
     if (data.competition.status !== 'COMPLETED') throw invalidState('Your report is available after the competition ends.');
   }
   const prn = data.students.find((s) => s.studentId === studentId)?.prn ?? 'student';
-  sendCsv(res, exporter.exportFilename(data, `report-${prn}`, 'csv'), exporter.studentReportCsv(data, studentId));
+  sendCsv(res, exporter.exportFilename(data, `report-${prn}`, 'csv'), exporter.studentReportCsv(data, studentId, auth.role === 'student'));
 }

@@ -113,7 +113,7 @@ export function StudentDashboardPage() {
             <div className="table-wrap">
               <table className="table">
                 <thead>
-                  <tr><th>Competition</th><th>Status</th><th>Joined</th><th className="num">Score</th><th className="num">Rank</th><th /></tr>
+                  <tr><th>Competition</th><th>Status</th><th>Joined</th><th className="num">Score</th><th /></tr>
                 </thead>
                 <tbody>
                   {history.data.items.map((item) => (
@@ -122,7 +122,6 @@ export function StudentDashboardPage() {
                       <td><StatusBadge status={item.status as CompetitionSummary['status']} /></td>
                       <td>{formatDateTime(item.joinedAt)}</td>
                       <td className="num">{item.finalScore ?? '—'}</td>
-                      <td className="num">{item.finalRank ? `#${item.finalRank}` : '—'}</td>
                       <td>{item.status === 'COMPLETED' && <Link to={`/student/competitions/${item.competitionId}/leaderboard`}>Details</Link>}</td>
                     </tr>
                   ))}

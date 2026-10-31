@@ -8,11 +8,12 @@ import { Pagination } from '../components/common/Pagination';
 import { Panel } from '../components/common/Panel';
 import { SelectField, TextAreaField, TextField } from '../components/forms/Fields';
 import { PageHeader } from '../components/layout/PageHeader';
+import { BulkQuestionEditor } from '../features/competition/BulkQuestionEditor';
 import { QueueEditor, type QueueQuestion } from '../features/competition/QueueEditor';
 import { useAsync } from '../hooks/useAsync';
 import { competitionService } from '../services/competitionService';
 import { toApiError, type ApiError } from '../services/apiClient';
-import type { ProgressionMode } from '../types';
+import type { DirectQuestionInput, ProgressionMode } from '../types';
 import { formatDateTime, formatDuration } from '../utils/format';
 
 const STATUS_FILTERS = ['', 'DRAFT', 'WAITING', 'RUNNING', 'PAUSED', 'COMPLETED', 'CANCELLED'];
@@ -26,6 +27,8 @@ function CreateCompetitionForm({ onCancel }: { onCancel: () => void }) {
   const [revealAnswers, setRevealAnswers] = useState(true);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
   const [completeWhenEmpty, setCompleteWhenEmpty] = useState(false);
+  const [entryMode, setEntryMode] = useState<'direct' | 'bank'>('direct');
+  const [directQuestions, setDirectQuestions] = useState<DirectQuestionInput[]>([]);
   const [queue, setQueue] = useState<QueueQuestion[]>([]);
   const [error, setError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
@@ -41,7 +44,9 @@ function CreateCompetitionForm({ onCancel }: { onCancel: () => void }) {
         durationSeconds: Math.round(minutes * 60),
         questionProgressionMode: mode,
         settings: { revealAnswers, showLeaderboardToStudents: showLeaderboard, completeWhenQueueEmpty: completeWhenEmpty },
-        questionIds: queue.map((q) => q.id),
+        ...(entryMode === 'direct' && directQuestions.length > 0
+          ? { questions: directQuestions }
+          : { questionIds: queue.map((q) => q.id) }),
       });
       navigate(`/host/competitions/${created.id}`);
     } catch (err) {
@@ -51,7 +56,8 @@ function CreateCompetitionForm({ onCancel }: { onCancel: () => void }) {
     }
   }
 
-  const totalSeconds = queue.reduce((sum, q) => sum + q.timeLimitSeconds, 0);
+  const hasQuestions = entryMode === 'direct' ? directQuestions.length > 0 : queue.length > 0;
+
   return (
     <form className="panel panel--holo stack" onSubmit={submit} aria-labelledby="create-title">
       <h2 id="create-title">Create competition</h2>
@@ -63,23 +69,43 @@ function CreateCompetitionForm({ onCancel }: { onCancel: () => void }) {
           label="Question progression"
           value={mode}
           onChange={(e) => setMode(e.target.value as ProgressionMode)}
-          options={[{ value: 'AUTOMATIC', label: 'Automatic (next question when time is up)' }, { value: 'MANUAL', label: 'Manual (host publishes each question)' }]}
+          options={[{ value: 'AUTOMATIC', label: 'Self-paced (participants answer questions in order)' }, { value: 'MANUAL', label: 'Manual' }]}
         />
       </div>
       <TextAreaField label="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} />
       <div className="row">
         <label className="checkbox"><input type="checkbox" checked={revealAnswers} onChange={(e) => setRevealAnswers(e.target.checked)} /> Reveal the correct answer when each question closes</label>
         <label className="checkbox"><input type="checkbox" checked={showLeaderboard} onChange={(e) => setShowLeaderboard(e.target.checked)} /> Show the live leaderboard to students</label>
-        <label className="checkbox"><input type="checkbox" checked={completeWhenEmpty} onChange={(e) => setCompleteWhenEmpty(e.target.checked)} /> End automatically when the queue runs out</label>
+        <label className="checkbox"><input type="checkbox" checked={completeWhenEmpty} onChange={(e) => setCompleteWhenEmpty(e.target.checked)} /> End automatically when questions run out</label>
       </div>
-      <QueueEditor value={queue} onChange={setQueue} />
-      {queue.length > 0 && (
-        <p className="muted small" style={{ margin: 0 }}>
-          Queued question time: {formatDuration(totalSeconds)}. {totalSeconds > minutes * 60 && 'This exceeds the competition duration; later questions will be cut short or never published.'}
-        </p>
+
+      <div className="row" style={{ gap: 8, marginTop: 8 }}>
+        <button
+          type="button"
+          className={`btn btn--small ${entryMode === 'direct' ? 'btn--primary' : 'btn--ghost'}`}
+          onClick={() => setEntryMode('direct')}
+        >
+          Direct Bulk Question Entry (up to 50)
+        </button>
+        <button
+          type="button"
+          className={`btn btn--small ${entryMode === 'bank' ? 'btn--primary' : 'btn--ghost'}`}
+          onClick={() => setEntryMode('bank')}
+        >
+          Select from Question Bank
+        </button>
+      </div>
+
+      {entryMode === 'direct' ? (
+        <BulkQuestionEditor questions={directQuestions} onChange={setDirectQuestions} maxQuestions={50} />
+      ) : (
+        <QueueEditor value={queue} onChange={setQueue} />
       )}
+
       <div className="form-actions">
-        <button type="submit" className="btn btn--gold" disabled={saving || name.trim().length < 3}>{saving ? 'Creating…' : 'Create competition'}</button>
+        <button type="submit" className="btn btn--gold" disabled={saving || name.trim().length < 3 || !hasQuestions}>
+          {saving ? 'Creating…' : 'Create competition'}
+        </button>
         <button type="button" className="btn btn--ghost" onClick={onCancel}>Cancel</button>
       </div>
     </form>

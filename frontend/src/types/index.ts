@@ -72,6 +72,15 @@ export interface QuestionInput {
   status: QuestionStatus;
 }
 
+export interface DirectQuestionInput {
+  id?: string;
+  questionText: string;
+  options: string[];
+  correctOption: OptionKey;
+  difficulty: Difficulty;
+  points?: number;
+}
+
 export interface Paginated<T> {
   items: T[];
   total: number;
@@ -127,7 +136,14 @@ export interface QueueEntry {
   questionId: string;
   order: number;
   status: 'PENDING' | 'LIVE' | 'CLOSED' | 'SKIPPED';
-  snapshot: { questionText: string; difficulty: Difficulty; points: number; timeLimitSeconds: number; correctOption: OptionKey } | null;
+  snapshot: {
+    questionText: string;
+    options?: string[];
+    difficulty: Difficulty;
+    points: number;
+    timeLimitSeconds: number;
+    correctOption: OptionKey;
+  } | null;
   publishedAt: string | null;
   closedAt: string | null;
   closeReason: string | null;
@@ -181,6 +197,13 @@ export interface DifficultyStats {
   timedOut: number;
   avgResponseMs: number | null;
   avgCorrectResponseMs: number | null;
+}
+
+export interface ParticipantSummaryResult {
+  attempted: number;
+  correct: number;
+  incorrect: number;
+  unanswered: number;
 }
 
 export interface StudentResult extends Required<Pick<LeaderboardEntry, 'rank' | 'studentId' | 'name' | 'department' | 'totalPoints' | 'correct'>> {

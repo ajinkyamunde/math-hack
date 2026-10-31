@@ -5,7 +5,7 @@ import { Question } from '../models/Question.js';
 import { Attempt } from '../models/Attempt.js';
 import { AppError, badRequest, forbidden, invalidState, notFound, isDuplicateKeyError } from '../utils/errors.js';
 import type { z } from 'zod';
-import type { createCompetitionSchema, updateCompetitionSchema } from '../validation/competitionSchemas.js';
+import type { createCompetitionSchema, directQuestionInputSchema, updateCompetitionSchema } from '../validation/competitionSchemas.js';
 import { canTransition, transitionError, type LifecycleAction } from './competitionLifecycle.js';
 import { closedQuestionPayload, hostCompetitionState, liveItem, publicQuestion, studentCompetitionState } from './competitionView.js';
 import * as timers from './timerService.js';
@@ -13,9 +13,12 @@ import { broadcaster } from '../sockets/broadcaster.js';
 import { recordAudit } from './auditService.js';
 import { finalizeCompetitionResults, broadcastLeaderboard, recordTimeouts } from './leaderboardService.js';
 import { logger } from '../utils/logger.js';
+import { DIFFICULTY_RULES } from '../types/domain.js';
+import { questionFingerprint } from '../utils/text.js';
 
 type CreateInput = z.output<typeof createCompetitionSchema>;
 type UpdateInput = z.output<typeof updateCompetitionSchema>;
+type DirectQuestionInput = z.infer<typeof directQuestionInputSchema>;
 type CloseReason = NonNullable<QueueItem['closeReason']>;
 
 /** Below this much overall time left, publishing a new question is pointless and the competition ends instead. */
@@ -210,16 +213,64 @@ async function snapshotsFor(questionIds: string[], competition: Pick<Competition
 // Host commands
 // ---------------------------------------------------------------------------
 
+export async function persistDirectQuestions(questions: DirectQuestionInput[], hostId: string): Promise<string[]> {
+  const ids: string[] = [];
+  for (const q of questions) {
+    if (q.id && Types.ObjectId.isValid(q.id)) {
+      const existing = await Question.findById(q.id);
+      if (existing) {
+        existing.questionText = q.questionText;
+        existing.options = q.options;
+        existing.correctOption = q.correctOption;
+        existing.difficulty = q.difficulty;
+        existing.timeLimitSeconds = DIFFICULTY_RULES[q.difficulty].defaultSeconds;
+        existing.points = q.points ?? DIFFICULTY_RULES[q.difficulty].defaultPoints;
+        existing.status = 'ACTIVE';
+        existing.fingerprint = questionFingerprint(q.questionText);
+        await existing.save();
+        ids.push(String(existing._id));
+        continue;
+      }
+    }
+    const created = await Question.create({
+      questionText: q.questionText,
+      options: q.options,
+      correctOption: q.correctOption,
+      difficulty: q.difficulty,
+      timeLimitSeconds: DIFFICULTY_RULES[q.difficulty].defaultSeconds,
+      points: q.points ?? DIFFICULTY_RULES[q.difficulty].defaultPoints,
+      status: 'ACTIVE',
+      fingerprint: questionFingerprint(q.questionText),
+      createdBy: hostId,
+    });
+    ids.push(String(created._id));
+  }
+  return ids;
+}
+
 export async function createCompetition(input: CreateInput, hostId: string) {
-  const { questionIds, ...rest } = input;
-  await snapshotsFor(questionIds, { settings: input.settings as CompetitionLean['settings'] }); // validates the selection
+  const { questionIds, questions, ...rest } = input;
+  let finalQuestionIds = questionIds ?? [];
+  if (questions && questions.length > 0) {
+    finalQuestionIds = await persistDirectQuestions(questions, hostId);
+  }
+  await snapshotsFor(finalQuestionIds, { settings: input.settings as CompetitionLean['settings'] }); // validates the selection
   const competition = await Competition.create({
     ...rest,
     createdBy: hostId,
-    queue: questionIds.map((questionId, index) => ({ questionId, order: index })),
+    queue: finalQuestionIds.map((questionId, index) => ({ questionId, order: index })),
   });
   await recordAudit({ actorId: hostId, actorRole: 'host', action: 'competition.create', competitionId: competition.id });
   return hostCompetitionState(competition.toObject() as CompetitionLean, Date.now());
+}
+
+export async function setDirectQuestions(id: string, questions: DirectQuestionInput[], hostId: string) {
+  const current = await loadCompetition(id);
+  if (!['DRAFT', 'WAITING'].includes(current.status)) {
+    throw invalidState('Questions can only be added, edited, or removed before the competition starts.');
+  }
+  const questionIds = await persistDirectQuestions(questions, hostId);
+  return setQueue(id, questionIds, hostId);
 }
 
 export async function updateCompetition(id: string, input: UpdateInput, hostId: string) {
@@ -298,9 +349,6 @@ export async function startCompetition(id: string, hostId: string) {
       effects: [{ type: 'status', event: 'competition:started' }],
       audit: { action: 'competition.start', actorId: hostId },
     };
-    if (competition.questionProgressionMode === 'AUTOMATIC') {
-      publishInto({ ...competition, endsAt }, queue, queue[0]!, now, plan);
-    }
     return plan;
   });
   return hostCompetitionState(updated, Date.now());
@@ -522,15 +570,59 @@ export async function studentState(id: string, studentId: string) {
   const competition = await loadCompetition(id);
   if (competition.status === 'DRAFT') throw notFound('Competition');
   const joined = Boolean(await Participant.exists({ competitionId: competition._id, studentId }));
-  let mySubmission = null;
-  const live = liveItem(competition);
-  if (joined && live) {
-    const attempt = await Attempt.findOne({ competitionId: competition._id, questionId: live.questionId, studentId, timedOut: false })
-      .select('selectedOption submittedAt')
-      .lean();
-    if (attempt) mySubmission = { questionId: String(live.questionId), selectedOption: attempt.selectedOption ?? null, submittedAt: attempt.submittedAt };
+  const now = Date.now();
+
+  const sortedQueue = competition.queue.slice().sort((a, b) => a.order - b.order);
+  const totalQuestions = sortedQueue.length;
+
+  if (!joined || ['WAITING', 'COMPLETED', 'CANCELLED'].includes(competition.status)) {
+    return studentCompetitionState(competition, now, {
+      joined,
+      currentQuestion: null,
+      questionNumber: null,
+      totalQuestions,
+      mySubmission: null,
+    });
   }
-  return studentCompetitionState(competition, Date.now(), { joined, mySubmission });
+
+  // Find all non-timed-out attempts by this student in this competition
+  const attempts = await Attempt.find({ competitionId: competition._id, studentId, timedOut: false })
+    .select('questionId selectedOption submittedAt')
+    .lean();
+  const attemptedSet = new Set(attempts.map((a) => String(a.questionId)));
+
+  // Next question is the first unattempted question in the queue
+  const nextItem = sortedQueue.find((item) => !attemptedSet.has(String(item.questionId)));
+
+  if (nextItem && nextItem.snapshot) {
+    const question = {
+      id: String(nextItem.questionId),
+      questionText: nextItem.snapshot.questionText,
+      options: nextItem.snapshot.options,
+      difficulty: nextItem.snapshot.difficulty,
+      points: nextItem.snapshot.points,
+      timeLimitSeconds: nextItem.snapshot.timeLimitSeconds ?? 0,
+      publishedAt: competition.startedAt?.toISOString() ?? new Date().toISOString(),
+      deadline: competition.endsAt?.toISOString(),
+      remainingMs: competition.endsAt ? Math.max(0, competition.endsAt.getTime() - now) : 0,
+    };
+    return studentCompetitionState(competition, now, {
+      joined,
+      currentQuestion: question,
+      questionNumber: attemptedSet.size + 1,
+      totalQuestions,
+      mySubmission: null,
+    });
+  }
+
+  // All questions in queue attempted
+  return studentCompetitionState(competition, now, {
+    joined,
+    currentQuestion: null,
+    questionNumber: totalQuestions,
+    totalQuestions,
+    mySubmission: null,
+  });
 }
 
 export async function joinCompetition(id: string, studentId: string) {

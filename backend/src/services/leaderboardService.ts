@@ -114,10 +114,8 @@ export function publicLeaderboard(entries: LeaderboardEntry[], limit = 10) {
 export async function broadcastLeaderboard(competition: CompetitionLean): Promise<void> {
   const id = String(competition._id);
   const entries = await computeLeaderboard(competition._id);
+  // Leaderboard is only sent to hosts; participants never receive leaderboard updates
   broadcaster().toHosts(id, 'leaderboard:updated', { competitionId: id, entries, total: entries.length });
-  if (competition.settings?.showLeaderboardToStudents ?? true) {
-    broadcaster().toCompetition(id, 'leaderboard:updated', { competitionId: id, entries: publicLeaderboard(entries), total: entries.length });
-  }
 }
 
 const pendingHostRefresh = new Map<string, NodeJS.Timeout>();

@@ -40,16 +40,36 @@ export async function submitAnswer(input: {
     throw forbidden('Join this competition before answering.');
   }
 
-  const live = liveItem(competition);
-  if (!live || String(live.questionId) !== input.questionId) throw invalidState('This question is no longer accepting answers.');
+  // Check overall competition timer
+  if (competition.endsAt && receivedAt.getTime() >= competition.endsAt.getTime()) {
+    throw new AppError(409, 'DEADLINE_PASSED', 'Competition time is up. Your answer was not recorded.');
+  }
 
-  const deadline = Math.min(competition.currentQuestionDeadline?.getTime() ?? 0, competition.endsAt?.getTime() ?? 0);
-  if (receivedAt.getTime() >= deadline) throw new AppError(409, 'DEADLINE_PASSED', 'Time is up for this question. Your answer was not recorded.');
+  // Backend answer locking and duplicate submission prevention
+  const existing = await Attempt.findOne({ competitionId: competition._id, questionId: input.questionId, studentId: input.studentId }).lean();
+  if (existing && !existing.timedOut) {
+    throw new AppError(409, 'ALREADY_SUBMITTED', 'This answer is permanently locked. Modifications and duplicate submissions are not allowed.');
+  }
 
-  const snapshot = live.snapshot!;
+  // Validate question belongs to competition queue
+  const queueItem = competition.queue.find((item) => String(item.questionId) === input.questionId);
+  if (!queueItem || !queueItem.snapshot) {
+    throw invalidState('This question is not part of this competition.');
+  }
+
+  // Verify participant is answering the current sequential question (prevents skipping or resubmitting)
+  const previousAttempts = await Attempt.find({ competitionId: competition._id, studentId: input.studentId, timedOut: false }).select('questionId').lean();
+  const attemptedSet = new Set(previousAttempts.map((a) => String(a.questionId)));
+  const sortedQueue = competition.queue.slice().sort((a, b) => a.order - b.order);
+  const currentExpected = sortedQueue.find((item) => !attemptedSet.has(String(item.questionId)));
+  if (!currentExpected || String(currentExpected.questionId) !== input.questionId) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'You can only submit your current active question.');
+  }
+
+  const snapshot = queueItem.snapshot;
   const isCorrect = input.selectedOption === snapshot.correctOption;
-  const startedAt = competition.currentQuestionStartedAt?.getTime() ?? receivedAt.getTime();
-  const responseTimeMs = Math.max(0, receivedAt.getTime() - startedAt - (competition.currentQuestionPausedMs ?? 0));
+  const startedAt = competition.startedAt?.getTime() ?? receivedAt.getTime();
+  const responseTimeMs = Math.max(0, receivedAt.getTime() - startedAt);
   const record = {
     difficulty: snapshot.difficulty,
     selectedOption: input.selectedOption,
@@ -59,39 +79,33 @@ export async function submitAnswer(input: {
     submittedAt: receivedAt,
     timedOut: false,
   };
-  const key = { competitionId: competition._id, questionId: live.questionId, studentId: input.studentId };
+  const key = { competitionId: competition._id, questionId: queueItem.questionId, studentId: input.studentId };
 
-  let alreadySubmitted = false;
-  let stored: { selectedOption?: string | null; submittedAt?: Date | null } = record;
   try {
-    await Attempt.create({ ...key, ...record });
-  } catch (error) {
-    if (!isDuplicateKeyError(error)) throw error;
-    // The unique index decided: either this student already answered (return the original, award nothing),
-    // or the question closed between our checks and the insert and a timeout row was written. An answer
-    // received before the deadline wins over that timeout row, exactly once.
-    const replaced = await Attempt.findOneAndUpdate({ ...key, timedOut: true }, { $set: record }, { new: true }).lean();
-    if (!replaced) {
-      const existing = await Attempt.findOne(key).select('selectedOption submittedAt').lean();
-      alreadySubmitted = true;
-      stored = existing ?? record;
+    if (existing && existing.timedOut) {
+      await Attempt.updateOne({ _id: existing._id }, { $set: record });
+    } else {
+      await Attempt.create({ ...key, ...record });
     }
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      throw new AppError(409, 'ALREADY_SUBMITTED', 'This answer is permanently locked. Duplicate submission rejected.');
+    }
+    throw error;
   }
 
   const result: SubmissionResult = {
     questionId: input.questionId,
-    selectedOption: (stored.selectedOption ?? input.selectedOption) as OptionKey,
-    submittedAt: (stored.submittedAt ?? receivedAt).toISOString(),
-    alreadySubmitted,
+    selectedOption: input.selectedOption,
+    submittedAt: receivedAt.toISOString(),
+    alreadySubmitted: false,
   };
 
-  if (!alreadySubmitted) {
-    const id = String(competition._id);
-    // Only the submitting student's own devices learn about the submission.
-    broadcaster().toStudent(input.studentId, 'answer:received', { competitionId: id, ...result });
-    const answered = await Attempt.countDocuments({ competitionId: competition._id, questionId: live.questionId, timedOut: false });
-    broadcaster().toHosts(id, 'question:answer-count', { competitionId: id, questionId: input.questionId, answered });
-    scheduleHostLeaderboardRefresh(id);
-  }
+  const id = String(competition._id);
+  broadcaster().toStudent(input.studentId, 'answer:received', { competitionId: id, ...result });
+  const answered = await Attempt.countDocuments({ competitionId: competition._id, questionId: queueItem.questionId, timedOut: false });
+  broadcaster().toHosts(id, 'question:answer-count', { competitionId: id, questionId: input.questionId, answered });
+  scheduleHostLeaderboardRefresh(id);
+
   return result;
 }

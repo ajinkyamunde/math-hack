@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { competitionService, type HostCommand } from '../../services/competitionService';
 import { toApiError, type ApiError } from '../../services/apiClient';
-import type { HostCompetitionState, LeaderboardEntry } from '../../types';
+import type { DirectQuestionInput, HostCompetitionState, LeaderboardEntry } from '../../types';
 import { syncServerClock } from '../../utils/serverClock';
 import { useCompetitionSocket } from './useCompetitionSocket';
 
@@ -83,5 +83,21 @@ export function useHostCompetition(competitionId: string | undefined) {
     [competitionId, apply],
   );
 
-  return { state, error, actionError, busy, connection, leaderboard, setLeaderboard, answerCount, connected, participants, run, saveQueue, refresh };
+  const saveDirectQuestions = useCallback(
+    async (questions: DirectQuestionInput[]) => {
+      if (!competitionId) return;
+      setBusy('questions');
+      setActionError(null);
+      try {
+        apply(await competitionService.saveDirectQuestions(competitionId, questions));
+      } catch (err) {
+        setActionError(toApiError(err));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [competitionId, apply],
+  );
+
+  return { state, error, actionError, busy, connection, leaderboard, setLeaderboard, answerCount, connected, participants, run, saveQueue, saveDirectQuestions, refresh };
 }

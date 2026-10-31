@@ -31,6 +31,11 @@ export async function setQueue(req: Request, res: Response): Promise<void> {
   res.json({ competition: await competitions.setQueue(id(req), (req.body as { questionIds: string[] }).questionIds, actor(req)) });
 }
 
+export async function setDirectQuestions(req: Request, res: Response): Promise<void> {
+  const body = req.body as { questions: any[] };
+  res.json({ competition: await competitions.setDirectQuestions(id(req), body.questions, actor(req)) });
+}
+
 export async function join(req: Request, res: Response): Promise<void> {
   res.json({ competition: await competitions.joinCompetition(id(req), actor(req)) });
 }

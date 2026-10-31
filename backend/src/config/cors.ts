@@ -8,7 +8,16 @@ import { getEnv } from './environment.js';
  */
 export function allowedOrigins(): string[] {
   const env = getEnv();
-  return [...new Set([new URL(env.FRONTEND_URL).origin, ...env.CORS_EXTRA_ORIGINS])];
+  return [
+    ...new Set([
+      new URL(env.FRONTEND_URL).origin,
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+      ...env.CORS_EXTRA_ORIGINS,
+    ]),
+  ];
 }
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
@@ -17,6 +26,7 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   try {
     const hostname = new URL(origin).hostname;
     if (hostname.endsWith('.vercel.app')) return true;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
   } catch {
     return false;
   }

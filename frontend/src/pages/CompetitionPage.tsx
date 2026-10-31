@@ -4,11 +4,8 @@ import { Alert, ErrorAlert } from '../components/common/Alert';
 import { DifficultyBadge, StatusBadge } from '../components/common/Badges';
 import { Loading } from '../components/common/Loading';
 import { Panel } from '../components/common/Panel';
-import { LeaderboardTable } from '../components/leaderboard/LeaderboardTable';
 import { AnswerOptions } from '../components/questions/AnswerOptions';
 import { CompetitionClock } from '../components/timers/CompetitionClock';
-import { CountdownRing } from '../components/timers/CountdownRing';
-import { useAuth } from '../features/authentication/useAuth';
 import { useStudentCompetition } from '../features/competition/useStudentCompetition';
 import { useNow } from '../hooks/useNow';
 import type { OptionKey } from '../types';
@@ -25,7 +22,6 @@ function ConnectionIndicator({ state }: { state: 'connecting' | 'online' | 'offl
 
 export function CompetitionPage() {
   const { id } = useParams();
-  const { user } = useAuth();
   const live = useStudentCompetition(id);
   const { state } = live;
   const [selected, setSelected] = useState<OptionKey | null>(null);
@@ -41,9 +37,7 @@ export function CompetitionPage() {
   if (!state) return <ErrorAlert error={live.error} title="Competition unavailable" />;
 
   const competitionLeft = paused ? state.remainingMs : remainingUntil(state.endsAt, undefined, now);
-  const questionLeft = question ? (paused ? question.remainingMs : remainingUntil(question.deadline, undefined, now)) : null;
-  const timeUp = questionLeft !== null && questionLeft <= 0;
-  const locked = Boolean(submission) || paused || timeUp || live.submitting;
+  const locked = Boolean(submission) || paused || live.submitting;
 
   if (!state.joined) {
     return (
@@ -75,14 +69,13 @@ export function CompetitionPage() {
       {state.status !== 'WAITING' && (
         <div className="panel panel--compact row row--between">
           <CompetitionClock remainingMs={competitionLeft} paused={paused} />
-          {question && <CountdownRing label="Question" remainingMs={questionLeft} totalMs={question.timeLimitSeconds * 1000} paused={paused} />}
         </div>
       )}
 
       {state.status === 'WAITING' && (
         <Panel holo>
           <h2>Assemble and stand by</h2>
-          <p className="muted" style={{ margin: 0 }}>You are in. The first question will appear here automatically when the host starts the competition. Keep this screen open.</p>
+          <p className="muted" style={{ margin: 0 }}>You are in. The questions will appear here automatically when the host starts the competition. Keep this screen open.</p>
         </Panel>
       )}
 
@@ -98,44 +91,39 @@ export function CompetitionPage() {
           aria-labelledby="question-heading"
         >
           <div className="row row--between">
-            <h2 id="question-heading" style={{ margin: 0 }}>Question {state.questionNumber ?? ''}{state.totalQuestions ? ` of ${state.totalQuestions}` : ''}</h2>
-            <div className="row">
+            <h2 id="question-heading" style={{ margin: 0 }}>
+              Question {state.questionNumber ?? ''}{state.totalQuestions ? ` of ${state.totalQuestions}` : ''}
+            </h2>
+            <div className="row" style={{ alignItems: 'center', gap: 8 }}>
               <DifficultyBadge difficulty={question.difficulty} />
-              <span className="badge badge--neutral">{question.points} pts</span>
             </div>
           </div>
           <p className="question-text">{question.questionText}</p>
-          <AnswerOptions name={`q-${question.id}`} options={question.options} selected={submission?.selectedOption ?? selected} onSelect={setSelected} locked={locked} />
+          <AnswerOptions
+            name={`q-${question.id}`}
+            options={question.options}
+            selected={submission?.selectedOption ?? selected}
+            onSelect={setSelected}
+            locked={locked}
+          />
           {live.submitError && <Alert tone="error">{live.submitError}</Alert>}
           <div className="submit-bar">
             {submission ? (
-              <Alert tone="success" title="Answer received">Your answer ({submission.selectedOption}) is locked in. Results are revealed when the question closes.</Alert>
-            ) : timeUp ? (
-              <Alert tone="warning" title="Time is up">Waiting for the next question…</Alert>
+              <Alert tone="success" title="Answer locked">Your answer ({submission.selectedOption}) is permanently locked. Advancing to the next question…</Alert>
             ) : (
               <button type="submit" className="btn btn--gold btn--block" disabled={!selected || locked}>
-                {live.submitting ? 'Submitting…' : selected ? `Submit answer ${selected}` : 'Select an answer'}
+                {live.submitting ? 'Locking answer…' : selected ? `Submit & lock answer (${selected})` : 'Select an answer'}
               </button>
             )}
           </div>
         </form>
       ) : (
         ['RUNNING', 'PAUSED'].includes(state.status) && (
-          <Panel>
-            {live.lastClosed ? (
-              <div className="stack">
-                <h2 style={{ margin: 0 }}>Question closed</h2>
-                {live.lastClosed.correctOption ? (
-                  <p style={{ margin: 0 }}>Correct answer: <strong style={{ color: 'var(--color-success)' }}>{live.lastClosed.correctOption}</strong></p>
-                ) : (
-                  <p className="muted" style={{ margin: 0 }}>Answers are not revealed during this competition.</p>
-                )}
-                {live.lastClosed.explanation && <p className="muted" style={{ margin: 0 }}>{live.lastClosed.explanation}</p>}
-                <p className="muted small" style={{ margin: 0 }}>Stand by for the next question.</p>
-              </div>
-            ) : (
-              <p className="muted" style={{ margin: 0 }}>Waiting for the host to publish the next question…</p>
-            )}
+          <Panel holo>
+            <h2>All questions completed!</h2>
+            <p className="muted" style={{ margin: 0 }}>
+              Your answers have been permanently locked and recorded. Please stand by until the competition duration ends to view your final results.
+            </p>
           </Panel>
         )
       )}
@@ -147,12 +135,6 @@ export function CompetitionPage() {
           ) : (
             <Link className="btn" to="/student">Back to dashboard</Link>
           )}
-        </Panel>
-      )}
-
-      {state.settings.showLeaderboardToStudents && live.leaderboard.length > 0 && (
-        <Panel title="Leaderboard">
-          <LeaderboardTable entries={live.leaderboard} highlightId={user?._id} caption="Live top 10" />
         </Panel>
       )}
     </div>

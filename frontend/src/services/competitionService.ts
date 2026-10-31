@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 import { call } from './authService';
-import type { CompetitionSettings, CompetitionSummary, HostCompetitionState, HostOverview, OptionKey, Paginated, ProgressionMode, StudentCompetitionState } from '../types';
+import type { CompetitionSettings, CompetitionSummary, DirectQuestionInput, HostCompetitionState, HostOverview, OptionKey, Paginated, ProgressionMode, StudentCompetitionState } from '../types';
 
 export interface CompetitionInput {
   name: string;
@@ -9,6 +9,7 @@ export interface CompetitionInput {
   questionProgressionMode: ProgressionMode;
   settings: CompetitionSettings;
   questionIds?: string[];
+  questions?: DirectQuestionInput[];
 }
 
 export type HostCommand = 'open' | 'start' | 'pause' | 'resume' | 'publish' | 'skip' | 'end' | 'cancel';
@@ -20,6 +21,8 @@ export const competitionService = {
   hostState: (id: string) => call(apiClient.get<{ competition: HostCompetitionState }>(`/competitions/${id}`)).then((r) => r.competition),
   studentState: (id: string) => call(apiClient.get<{ competition: StudentCompetitionState }>(`/competitions/${id}/state`)).then((r) => r.competition),
   setQueue: (id: string, questionIds: string[]) => call(apiClient.put<{ competition: HostCompetitionState }>(`/competitions/${id}/queue`, { questionIds })).then((r) => r.competition),
+  saveDirectQuestions: (id: string, questions: DirectQuestionInput[]) =>
+    call(apiClient.put<{ competition: HostCompetitionState }>(`/competitions/${id}/questions`, { questions })).then((r) => r.competition),
   command: (id: string, command: HostCommand, questionId?: string) =>
     call(apiClient.post<{ competition: HostCompetitionState }>(`/competitions/${id}/${command}`, questionId ? { questionId } : {})).then((r) => r.competition),
   join: (id: string) => call(apiClient.post<{ competition: StudentCompetitionState }>(`/competitions/${id}/join`)).then((r) => r.competition),
